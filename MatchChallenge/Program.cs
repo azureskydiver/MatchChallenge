@@ -186,6 +186,52 @@ namespace MatchChallenge
         }
     }
 
+    public class KmpMatcher2 : IMatcher
+    {
+        public string MatchChallenge(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return "-1";
+
+            int suffixLength = ComputeSuffixLength(input);
+            if (suffixLength == 0)
+                return "-1";
+
+            int partLength = input.Length - suffixLength;
+            if (input.Length % partLength != 0)
+                return "-1";
+
+            if (partLength % 2 == 0)
+                partLength = input.Length / 2;
+            return input.Substring(0, partLength);
+        }
+
+        int ComputeSuffixLength(ReadOnlySpan<char> input)
+        {
+            Span<int> lps = stackalloc int[input.Length];
+            int len = 0;
+            int i = 1;
+
+            while (i < input.Length)
+            {
+                if (input[i] == input[len])
+                {
+                    lps[i++] = ++len;
+                }
+                else
+                {
+                    if (len != 0)
+                        len = lps[len - 1];
+                    else
+                        i++;
+                }
+            }
+
+            return lps[input.Length - 1];
+        }
+    }
+
+    [MemoryDiagnoser]
     public class MatcherBenchmarks
     {
         const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -201,6 +247,7 @@ namespace MatchChallenge
         IMatcher _offsetMatcher = new OffsetMatcher();
         IMatcher _moduloMatcher = new ModuloMatcher();
         IMatcher _kmpMatcher = new KmpMatcher();
+        IMatcher _kmpMatcher2 = new KmpMatcher2();
 
         public MatcherBenchmarks()
         {
@@ -250,6 +297,9 @@ namespace MatchChallenge
 
         [Benchmark]
         public string KmpMatcher() => Test(_kmpMatcher);
+
+        [Benchmark]
+        public string KmpMatcher2() => Test(_kmpMatcher2);
     }
 
     public class Program
