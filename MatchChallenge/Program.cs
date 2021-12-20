@@ -161,7 +161,7 @@ namespace MatchChallenge
             return input.Substring(0, partLength);
         }
 
-        int [] ComputeLpsArray(ReadOnlySpan<char> input)
+        int [] ComputeLpsArray(string input)
         {
             var lps = new int[input.Length];
             int len = 0;
@@ -186,6 +186,8 @@ namespace MatchChallenge
         }
     }
 
+    [SimpleJob(RuntimeMoniker.Net60)]
+    [SimpleJob(RuntimeMoniker.Net48)]
     public class MatcherBenchmarks
     {
         const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
