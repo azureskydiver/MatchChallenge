@@ -25,21 +25,21 @@ namespace MatchChallenge
                 {
                     var partLength = input.Length / i;
                     var part = input.Substring(0, partLength);
-                    if (AllPartsEqual(input, part))
+                    if (AllPartsEqual(input, part, i))
                         return part;
                 }
             }
             return "-1";
         }
 
-        protected abstract bool AllPartsEqual(string input, string part);
+        protected abstract bool AllPartsEqual(string input, string part, int partCount);
     }
 
     public class SubstringMatcher : SubstringPartsMatcher
     {
-        protected override bool AllPartsEqual(string input, string part)
+        protected override bool AllPartsEqual(string input, string part, int partCount)
         {
-            for (int i = 1; i < input.Length / part.Length; i++)
+            for (int i = 1; i < partCount; i++)
             {
                 if (input.Substring(i * part.Length, part.Length) != part)
                     return false;
@@ -50,25 +50,23 @@ namespace MatchChallenge
 
     public class SplitMatcher : SubstringPartsMatcher
     {
-        protected override bool AllPartsEqual(string input, string part)
+        protected override bool AllPartsEqual(string input, string part, int partCount)
             => input.Split(new string[] { part }, StringSplitOptions.RemoveEmptyEntries).Length == 0;
     }
 
     public class RegexMatcher : SubstringPartsMatcher
     {
-        protected override bool AllPartsEqual(string input, string part)
+        protected override bool AllPartsEqual(string input, string part, int partCount)
         {
-            var partsCount = input.Length / part.Length;
-            return Regex.IsMatch(input, $"({part}){{{partsCount}}}");
+            return Regex.IsMatch(input, $"({part}){{{partCount}}}");
         }
     }
 
     public class LinqMatcher : SubstringPartsMatcher
     {
-        protected override bool AllPartsEqual(string input, string part)
+        protected override bool AllPartsEqual(string input, string part, int partCount)
         {
-            var partsCount = input.Length / part.Length;
-            return string.Concat(Enumerable.Repeat(part, partsCount)) == input;
+            return string.Concat(Enumerable.Repeat(part, partCount)) == input;
         }
     }
 
