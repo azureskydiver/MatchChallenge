@@ -48,6 +48,21 @@ namespace MatchChallenge
         }
     }
 
+    public class SpanSliceMatcher : SubstringPartsMatcher
+    {
+        protected override bool AllPartsEqual(string input, string part, int partCount)
+        {
+            var inputSpan = input.AsSpan();
+            var partSpan = part.AsSpan();
+            for (int i = 1; i < partCount; i++)
+            {
+                if (!inputSpan.Slice(i * part.Length, part.Length).SequenceEqual(partSpan))
+                    return false;
+            }
+            return true;
+        }
+    }
+
     public class SplitMatcher : SubstringPartsMatcher
     {
         protected override bool AllPartsEqual(string input, string part, int partCount)
@@ -230,6 +245,7 @@ namespace MatchChallenge
         string _good;
         string _bad;
         IMatcher _substringMatcher = new SubstringMatcher();
+        IMatcher _spanSliceMatcher = new SpanSliceMatcher();
         IMatcher _splitMatcher = new SplitMatcher();
         IMatcher _regexMatcher = new RegexMatcher();
         IMatcher _linqMatcher = new LinqMatcher();
@@ -266,7 +282,10 @@ namespace MatchChallenge
 
         [Benchmark]
         public string Substring() => Test(_substringMatcher);
-
+        
+        [Benchmark]
+        public string SpanSlice() => Test(_spanSliceMatcher);
+        
         [Benchmark]
         public string Split() => Test(_splitMatcher);
 
@@ -297,7 +316,7 @@ namespace MatchChallenge
         public static void Main()
         {
             BenchmarkRunner.Run<MatcherBenchmarks>();
-            // Console.WriteLine(new MatcherBenchmarks().KmpMatcher());
+            // Console.WriteLine(new MatcherBenchmarks().KmpMatcher());            
         }
     }
 }
