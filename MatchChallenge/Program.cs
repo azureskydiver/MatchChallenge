@@ -39,7 +39,7 @@ namespace MatchChallenge
     {
         protected override bool AllPartsEqual(string input, string part)
         {
-            for (int i = 2; i < input.Length / part.Length; i++)
+            for (int i = 1; i < input.Length / part.Length; i++)
             {
                 if (input.Substring(i * part.Length, part.Length) != part)
                     return false;
@@ -58,12 +58,8 @@ namespace MatchChallenge
     {
         protected override bool AllPartsEqual(string input, string part)
         {
-            for (int i = 2; i < input.Length / part.Length; i++)
-            {
-                if (Regex.IsMatch(input, $"({part}){{{i}}}"))
-                    return false;
-            }
-            return true;
+            var partsCount = input.Length / part.Length;
+            return Regex.IsMatch(input, $"({part}){{{partsCount}}}");
         }
     }
 
@@ -71,12 +67,8 @@ namespace MatchChallenge
     {
         protected override bool AllPartsEqual(string input, string part)
         {
-            for (int i = 2; i < input.Length / part.Length; i++)
-            {
-                if (string.Concat(Enumerable.Repeat(part, i)) == input)
-                    return false;
-            }
-            return true;
+            var partsCount = input.Length / part.Length;
+            return string.Concat(Enumerable.Repeat(part, partsCount)) == input;
         }
     }
 
@@ -178,7 +170,7 @@ namespace MatchChallenge
                     if (len != 0)
                         len = lps[len - 1];
                     else
-                        i++;
+                        lps[i++] = 0;
                 }
             }
 
@@ -186,7 +178,7 @@ namespace MatchChallenge
         }
     }
 
-    public class KmpMatcher2 : IMatcher
+    public class KmpStackAllocMatcher : IMatcher
     {
         public string MatchChallenge(string input)
         {
@@ -223,7 +215,7 @@ namespace MatchChallenge
                     if (len != 0)
                         len = lps[len - 1];
                     else
-                        i++;
+                        lps[i++] = 0;
                 }
             }
 
@@ -247,8 +239,8 @@ namespace MatchChallenge
         IMatcher _offsetMatcher = new OffsetMatcher();
         IMatcher _moduloMatcher = new ModuloMatcher();
         IMatcher _kmpMatcher = new KmpMatcher();
-        IMatcher _kmpMatcher2 = new KmpMatcher2();
-
+        IMatcher _kmpStackAllocMatcher = new KmpStackAllocMatcher();
+  
         public MatcherBenchmarks()
         {
             var sb = new StringBuilder();
@@ -275,31 +267,31 @@ namespace MatchChallenge
         }
 
         [Benchmark]
-        public string SubstringMatcher() => Test(_substringMatcher);
+        public string Substring() => Test(_substringMatcher);
 
         [Benchmark]
-        public string SplitMatcher() => Test(_splitMatcher);
+        public string Split() => Test(_splitMatcher);
 
         [Benchmark]
-        public string RegexMatcher() => Test(_regexMatcher);
+        public string Regex() => Test(_regexMatcher);
 
         [Benchmark]
-        public string LinqMatcher() => Test(_linqMatcher);
+        public string Linq() => Test(_linqMatcher);
 
         [Benchmark]
-        public string PureRegexMatcher() => Test(_pureRegexMatcher);
+        public string PureRegex() => Test(_pureRegexMatcher);
 
         [Benchmark]
-        public string OffsetMatcher() => Test(_offsetMatcher);
+        public string Offset() => Test(_offsetMatcher);
 
         [Benchmark]
-        public string ModuloMatcher() => Test(_moduloMatcher);
+        public string Modulo() => Test(_moduloMatcher);
 
         [Benchmark]
-        public string KmpMatcher() => Test(_kmpMatcher);
+        public string Kmp() => Test(_kmpMatcher);
 
         [Benchmark]
-        public string KmpMatcher2() => Test(_kmpMatcher2);
+        public string KmpStackAlloc() => Test(_kmpStackAllocMatcher);
     }
 
     public class Program
