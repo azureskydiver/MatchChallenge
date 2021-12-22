@@ -87,15 +87,18 @@ namespace MatchChallenge
 
     public class PureRegexMatcher : IMatcher
     {
+        private readonly Regex _regex = new("^(.+)\\1+", RegexOptions.Compiled);
+        // also matching end $ is much slower
+
         public string MatchChallenge(string input)
         {
-            var m = Regex.Match(input, "(.+)\\1+");
+            var m = _regex.Match(input);
             if (m.Success && m.Length == input.Length)
                 return m.Groups[1].Value;
             return "-1";
         }
     }
-
+   
     public abstract class StringIndexMatcher : IMatcher
     {
         public string MatchChallenge(string input)
@@ -119,14 +122,10 @@ namespace MatchChallenge
     {
         protected override bool AllPartsEqual(string input, int partLength)
         {
-            for (int i = 0; i < input.Length / partLength - 1; i++)
+            for (int i = 0; i < input.Length - partLength; i++)
             {
-                for (int j = 0; j < partLength; j++)
-                {
-                    int index = i * partLength + j;
-                    if (input[index] != input[index + partLength])
-                        return false;
-                }
+                if (input[i] != input[i + partLength])
+                    return false;
             }
             return true;
         }
@@ -144,7 +143,7 @@ namespace MatchChallenge
             return true;
         }
     }
-
+   
     public class KmpMatcher : IMatcher
     {
         public string MatchChallenge(string input)
@@ -282,10 +281,10 @@ namespace MatchChallenge
 
         [Benchmark]
         public string Substring() => Test(_substringMatcher);
-        
+
         [Benchmark]
         public string SpanSlice() => Test(_spanSliceMatcher);
-        
+
         [Benchmark]
         public string Split() => Test(_splitMatcher);
 
