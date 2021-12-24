@@ -69,6 +69,12 @@ namespace MatchChallenge
             => input.Split(new string[] { part }, StringSplitOptions.RemoveEmptyEntries).Length == 0;
     }
 
+    public class ReplaceMatcher : SubstringPartsMatcher
+    {
+        protected override bool AllPartsEqual(string input, string part, int partCount)
+            => input.Replace(part, "").Length == 0;
+    }
+
     public class RegexMatcher : SubstringPartsMatcher
     {
         protected override bool AllPartsEqual(string input, string part, int partCount)
@@ -236,6 +242,7 @@ namespace MatchChallenge
     }
 
     [MemoryDiagnoser]
+    [RankColumn]
     public class MatcherBenchmarks
     {
         const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -246,6 +253,7 @@ namespace MatchChallenge
         IMatcher _substringMatcher = new SubstringMatcher();
         IMatcher _spanSliceMatcher = new SpanSliceMatcher();
         IMatcher _splitMatcher = new SplitMatcher();
+        IMatcher _replaceMatcher = new ReplaceMatcher();
         IMatcher _regexMatcher = new RegexMatcher();
         IMatcher _linqMatcher = new LinqMatcher();
         IMatcher _pureRegexMatcher = new PureRegexMatcher();
@@ -287,6 +295,9 @@ namespace MatchChallenge
 
         [Benchmark]
         public string Split() => Test(_splitMatcher);
+
+        [Benchmark]
+        public string Replace() => Test(_replaceMatcher);        
 
         [Benchmark]
         public string Regex() => Test(_regexMatcher);
