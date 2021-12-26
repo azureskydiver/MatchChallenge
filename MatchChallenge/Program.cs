@@ -15,12 +15,6 @@ namespace MatchChallenge
         string MatchChallenge(string input);
     }
 
-    public record PartData(string Input, int PartLength, int PartCount)
-    {        
-        private readonly string _part = Input[..PartLength];
-        public string Part => _part;
-    }
-
     public abstract class PartsMatcher : IMatcher
     {
         public string MatchChallenge(string input)
@@ -38,12 +32,18 @@ namespace MatchChallenge
             return "-1";
         }
 
-        protected abstract bool AllPartsEqual(PartData data);
+        protected abstract bool AllPartsEqual(in PartData data);
+
+        protected record PartData(string Input, int PartLength, int PartCount)
+        {
+            private readonly string _part = Input[..PartLength];
+            public string Part => _part;
+        }
     }
 
     public class SubstringMatcher : PartsMatcher
     {
-        protected override bool AllPartsEqual(PartData data)
+        protected override bool AllPartsEqual(in PartData data)
         {
             for (int i = 1; i < data.PartCount; i++)
             {
@@ -56,7 +56,7 @@ namespace MatchChallenge
 
     public class SpanSliceMatcher : PartsMatcher
     {
-        protected override bool AllPartsEqual(PartData data)
+        protected override bool AllPartsEqual(in PartData data)
         {
             for (int i = 1; i < data.PartCount; i++)
             {
@@ -69,19 +69,19 @@ namespace MatchChallenge
 
     public class SplitMatcher : PartsMatcher
     {
-        protected override bool AllPartsEqual(PartData data)
+        protected override bool AllPartsEqual(in PartData data)
             => data.Input.Split(new string[] { data.Part }, StringSplitOptions.RemoveEmptyEntries).Length == 0;
     }
 
     public class ReplaceMatcher : PartsMatcher
     {
-        protected override bool AllPartsEqual(PartData data)
+        protected override bool AllPartsEqual(in PartData data)
             => data.Input.Replace(data.Part, "").Length == 0;
     }
 
     public class RegexMatcher : PartsMatcher
     {
-        protected override bool AllPartsEqual(PartData data)
+        protected override bool AllPartsEqual(in PartData data)
         {
             return Regex.IsMatch(data.Input, $"({data.Part}){{{data.PartCount}}}");
         }
@@ -89,7 +89,7 @@ namespace MatchChallenge
 
     public class LinqMatcher : PartsMatcher
     {
-        protected override bool AllPartsEqual(PartData data)
+        protected override bool AllPartsEqual(in PartData data)
         {
             return string.Concat(Enumerable.Repeat(data.Part, data.PartCount)) == data.Input;
         }
@@ -111,7 +111,7 @@ namespace MatchChallenge
 
     public class OffsetMatcher : PartsMatcher
     {
-        protected override bool AllPartsEqual(PartData data)
+        protected override bool AllPartsEqual(in PartData data)
         {
             for (int i = 0; i < data.Input.Length - data.PartLength; i++)
             {
@@ -124,7 +124,7 @@ namespace MatchChallenge
 
     public class ModuloMatcher : PartsMatcher
     {
-        protected override bool AllPartsEqual(PartData data)
+        protected override bool AllPartsEqual(in PartData data)
         {
             for (int i = data.PartLength; i < data.Input.Length; i++)
             {
