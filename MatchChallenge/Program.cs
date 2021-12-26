@@ -15,7 +15,13 @@ namespace MatchChallenge
         string MatchChallenge(string input);
     }
 
-    public abstract class SubstringPartsMatcher : IMatcher
+    public record PartData(string Input, int PartLength, int PartCount)
+    {        
+        private readonly string _part = Input[..PartLength];
+        public string Part => _part;
+    }
+
+    public abstract class PartsMatcher : IMatcher
     {
         public string MatchChallenge(string input)
         {
@@ -24,70 +30,68 @@ namespace MatchChallenge
                 if (input.Length % i == 0)
                 {
                     var partLength = input.Length / i;
-                    var part = input.Substring(0, partLength);
-                    if (AllPartsEqual(input, part, i))
-                        return part;
+                    var data = new PartData(input, partLength, i);
+                    if (AllPartsEqual(data))
+                        return data.Part;
                 }
             }
             return "-1";
         }
 
-        protected abstract bool AllPartsEqual(string input, string part, int partCount);
+        protected abstract bool AllPartsEqual(PartData data);
     }
 
-    public class SubstringMatcher : SubstringPartsMatcher
+    public class SubstringMatcher : PartsMatcher
     {
-        protected override bool AllPartsEqual(string input, string part, int partCount)
+        protected override bool AllPartsEqual(PartData data)
         {
-            for (int i = 1; i < partCount; i++)
+            for (int i = 1; i < data.PartCount; i++)
             {
-                if (input.Substring(i * part.Length, part.Length) != part)
+                if (data.Input.Substring(i * data.PartLength, data.PartLength) != data.Part)
                     return false;
             }
             return true;
         }
     }
 
-    public class SpanSliceMatcher : SubstringPartsMatcher
+    public class SpanSliceMatcher : PartsMatcher
     {
-        protected override bool AllPartsEqual(string input, string part, int partCount)
+        protected override bool AllPartsEqual(PartData data)
         {
-            var inputSpan = input.AsSpan();
-            var partSpan = part.AsSpan();
-            for (int i = 1; i < partCount; i++)
+            for (int i = 1; i < data.PartCount; i++)
             {
-                if (!inputSpan.Slice(i * part.Length, part.Length).SequenceEqual(partSpan))
+                if (!data.Input.AsSpan().Slice(i * data.PartLength, data.PartLength).SequenceEqual(data.Part.AsSpan()))
                     return false;
             }
             return true;
         }
     }
 
-    public class SplitMatcher : SubstringPartsMatcher
+    public class SplitMatcher : PartsMatcher
     {
-        protected override bool AllPartsEqual(string input, string part, int partCount)
-            => input.Split(new string[] { part }, StringSplitOptions.RemoveEmptyEntries).Length == 0;
+        protected override bool AllPartsEqual(PartData data)
+            => data.Input.Split(new string[] { data.Part }, StringSplitOptions.RemoveEmptyEntries).Length == 0;
     }
 
-    public class ReplaceMatcher : SubstringPartsMatcher
+    public class ReplaceMatcher : PartsMatcher
     {
-        protected override bool AllPartsEqual(string input, string part, int partCount)
-            => input.Replace(part, "").Length == 0;
+        protected override bool AllPartsEqual(PartData data)
+            => data.Input.Replace(data.Part, "").Length == 0;
     }
 
-    public class RegexMatcher : SubstringPartsMatcher
+    public class RegexMatcher : PartsMatcher
     {
-        protected override bool AllPartsEqual(string input, string part, int partCount)
+        protected override bool AllPartsEqual(PartData data)
         {
-            return Regex.IsMatch(input, $"({part}){{{partCount}}}");
+            return Regex.IsMatch(data.Input, $"({data.Part}){{{data.PartCount}}}");
         }
     }
 
-    public class LinqMatcher : SubstringPartsMatcher
+    public class LinqMatcher : PartsMatcher
     {
-        protected override bool AllPartsEqual(string input, string part, int partCount)
+        protected override bool AllPartsEqual(PartData data)
         {
-            return string.Concat(Enumerable.Repeat(part, partCount)) == input;
+            return string.Concat(Enumerable.Repeat(data.Part, data.PartCount)) == data.Input;
         }
     }
 
@@ -104,52 +108,33 @@ namespace MatchChallenge
             return "-1";
         }
     }
-   
-    public abstract class StringIndexMatcher : IMatcher
-    {
-        public string MatchChallenge(string input)
-        {
-            for (int i = 2; i <= input.Length / 2; i++)
-            {
-                if (input.Length % i == 0)
-                {
-                    var partLength = input.Length / i;
-                    if (AllPartsEqual(input, partLength))
-                        return input.Substring(0, partLength);
-                }
-            }
-            return "-1";
-        }
 
-        protected abstract bool AllPartsEqual(string input, int partLength);
-    }
-
-    public class OffsetMatcher : StringIndexMatcher
+    public class OffsetMatcher : PartsMatcher
     {
-        protected override bool AllPartsEqual(string input, int partLength)
+        protected override bool AllPartsEqual(PartData data)
         {
-            for (int i = 0; i < input.Length - partLength; i++)
+            for (int i = 0; i < data.Input.Length - data.PartLength; i++)
             {
-                if (input[i] != input[i + partLength])
+                if (data.Input[i] != data.Input[i + data.PartLength])
                     return false;
             }
             return true;
         }
     }
 
-    public class ModuloMatcher : StringIndexMatcher
+    public class ModuloMatcher : PartsMatcher
     {
-        protected override bool AllPartsEqual(string input, int partLength)
+        protected override bool AllPartsEqual(PartData data)
         {
-            for (int i = partLength; i < input.Length; i++)
+            for (int i = data.PartLength; i < data.Input.Length; i++)
             {
-                if (input[i] != input[i % partLength])
+                if (data.Input[i] != data.Input[i % data.PartLength])
                     return false;
             }
             return true;
         }
     }
-   
+
     public class KmpMatcher : IMatcher
     {
         public string MatchChallenge(string input)
@@ -171,7 +156,7 @@ namespace MatchChallenge
             return input.Substring(0, partLength);
         }
 
-        int [] ComputeLpsArray(ReadOnlySpan<char> input)
+        int[] ComputeLpsArray(ReadOnlySpan<char> input)
         {
             var lps = new int[input.Length];
             int len = 0;
@@ -261,7 +246,7 @@ namespace MatchChallenge
         IMatcher _moduloMatcher = new ModuloMatcher();
         IMatcher _kmpMatcher = new KmpMatcher();
         IMatcher _kmpStackAllocMatcher = new KmpStackAllocMatcher();
-  
+
         public MatcherBenchmarks()
         {
             var sb = new StringBuilder();
@@ -297,7 +282,7 @@ namespace MatchChallenge
         public string Split() => Test(_splitMatcher);
 
         [Benchmark]
-        public string Replace() => Test(_replaceMatcher);        
+        public string Replace() => Test(_replaceMatcher);
 
         [Benchmark]
         public string Regex() => Test(_regexMatcher);
