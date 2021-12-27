@@ -211,14 +211,23 @@ namespace MatchChallenge
         }
     }
 
-    [MemoryDiagnoser]
-    [RankColumn]
+    [MemoryDiagnoser, RankColumn, ShortRunJob]
+    [AnyCategoriesFilter("A", "E"), AllCategoriesFilter("1")]
     public class MatcherBenchmarks
     {
+        public enum InType
+        {
+            Good,
+            Bad,
+            Mixed
+        }
+
         const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         static Random _rnd = new Random();
 
-        string _input = String.Empty;
+        string _good = String.Empty;
+        string _bad = String.Empty;
+
         IMatcher _substringMatcher = new SubstringMatcher();
         IMatcher _spanSliceMatcher = new SpanSliceMatcher();
         IMatcher _splitMatcher = new SplitMatcher();
@@ -232,76 +241,91 @@ namespace MatchChallenge
         IMatcher _kmpArrayPoolMatcher = new KmpArrayPoolMatcher();
         IMatcher _kmpStackAllocMatcher = new KmpStackAllocMatcher();
 
-        [Params(true, false)]
-        public bool GoodInput;
+        //[Params(InType.Mixed)]
+        [ParamsAllValues] 
+        public InType InputType;
 
-        [Params(1, 2, 5, 17, 37, 67, 131, 257)]
+        [Params(257)]
         public int BaseSize;
 
-        [Params(2, 3, 4, 5, 11, 17, 37, 67, 131, 257)]
+        [Params(257)]
         public int Repetition;
 
         [GlobalSetup]
         public void Setup()
         {
             var sb = new StringBuilder();
+            for (int i = 0; i < BaseSize; i++)
+                sb.Append(alphabet[_rnd.Next(alphabet.Length)]);
+            var value = sb.ToString();
 
-            if (GoodInput)
+            if (InputType == InType.Mixed || InputType==InType.Good)
             {
-                for (int i = 0; i < BaseSize; i++)
-                    sb.Append(alphabet[_rnd.Next(alphabet.Length)]);
-                var value = sb.ToString();
-
                 sb.Clear();
                 for (int i = 0; i < Repetition; i++)
                     sb.Append(value);
+
+                _good = sb.ToString();
             }
-            else
+
+            if (InputType == InType.Mixed || InputType == InType.Bad)
             {
                 sb.Clear();
                 for (int i = 0; i < BaseSize * Repetition; i++)
                     sb.Append(alphabet[_rnd.Next(alphabet.Length)]);
-            }
-            _input = sb.ToString();
+                _bad = sb.ToString();
+            }                
         }
 
         string Test(IMatcher matcher)
-            => matcher.MatchChallenge(_input);
+        {
+            switch (InputType)
+            {
+                case InType.Good:
+                    return matcher.MatchChallenge(_good);
+                case InType.Bad:
+                    return matcher.MatchChallenge(_bad);
+                case InType.Mixed:
+                default:
+                    matcher.MatchChallenge(_bad);
+                    return matcher.MatchChallenge(_good);
+            }
+        }
 
-        [Benchmark]
+        [Benchmark, BenchmarkCategory("A", "2")]
         public string Substring() => Test(_substringMatcher);
 
-        [Benchmark]
+        [Benchmark, BenchmarkCategory("A", "1")]
         public string SpanSlice() => Test(_spanSliceMatcher);
 
-        [Benchmark]
+        [Benchmark, BenchmarkCategory("B", "2")]
         public string Split() => Test(_splitMatcher);
 
-        [Benchmark]
+        [Benchmark, BenchmarkCategory("B", "1")]
         public string Replace() => Test(_replaceMatcher);
 
-        [Benchmark]
+        [Benchmark, BenchmarkCategory("C", "1")]
         public string Regex() => Test(_regexMatcher);
 
-        [Benchmark]
+        [Benchmark, BenchmarkCategory("C", "2")]
         public string Linq() => Test(_linqMatcher);
 
-        [Benchmark]
+        [Benchmark, BenchmarkCategory("C", "2")]
         public string PureRegex() => Test(_pureRegexMatcher);
 
-        [Benchmark]
+        [Benchmark, BenchmarkCategory("D", "1")]
         public string Offset() => Test(_offsetMatcher);
 
-        [Benchmark]
+        [Benchmark, BenchmarkCategory("D", "2")]
         public string Modulo() => Test(_moduloMatcher);
 
-        [Benchmark]
+        [Benchmark, BenchmarkCategory("E", "2")]
         public string KmpHeap() => Test(_kmpHeapMatcher);
 
-        [Benchmark]
+        [Benchmark, BenchmarkCategory("E", "1")]
         public string KmpArrayPool() => Test(_kmpArrayPoolMatcher);
 
-        [Benchmark]
+        [Benchmark, BenchmarkCategory("E", "2")]
         public string KmpStackAlloc() => Test(_kmpStackAllocMatcher);
     }
 
