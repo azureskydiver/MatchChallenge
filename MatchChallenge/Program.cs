@@ -218,8 +218,7 @@ namespace MatchChallenge
         const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         static Random _rnd = new Random();
 
-        string _good;
-        string _bad;
+        string _input = String.Empty;
         IMatcher _substringMatcher = new SubstringMatcher();
         IMatcher _spanSliceMatcher = new SpanSliceMatcher();
         IMatcher _splitMatcher = new SplitMatcher();
@@ -233,31 +232,45 @@ namespace MatchChallenge
         IMatcher _kmpArrayPoolMatcher = new KmpArrayPoolMatcher();
         IMatcher _kmpStackAllocMatcher = new KmpStackAllocMatcher();
 
-        public MatcherBenchmarks()
+        [Params(true, false)]
+        public bool GoodInput;
+
+        [Params(1, 2, 5, 17, 37, 67, 131, 257)]
+        public int BaseSize;
+
+        [Params(2, 3, 4, 5, 11, 17, 37, 67, 131, 257)]
+        public int Repetition;
+
+        [GlobalSetup]
+        public void Setup()
         {
             var sb = new StringBuilder();
-            for (int i = 0; i < 257; i++)
-                sb.Append(alphabet[_rnd.Next(alphabet.Length)]);
-            var value = sb.ToString();
 
-            sb.Clear();
-            for (int i = 0; i < 257; i++)
-                sb.Append(value);
+            Console.WriteLine($"{GoodInput}, {BaseSize}, {Repetition}");
 
-            _good = sb.ToString();
+            if (GoodInput)
+            {
+                for (int i = 0; i < BaseSize; i++)
+                    sb.Append(alphabet[_rnd.Next(alphabet.Length)]);
+                var value = sb.ToString();
 
-            sb.Clear();
-            for (int i = 0; i < 257 * 257; i++)
-                sb.Append(alphabet[_rnd.Next(alphabet.Length)]);
-            _bad = sb.ToString();
+                sb.Clear();
+                for (int i = 0; i < Repetition; i++)
+                    sb.Append(value);
+            }
+            else
+            {
+                sb.Clear();
+                for (int i = 0; i < BaseSize * Repetition; i++)
+                    sb.Append(alphabet[_rnd.Next(alphabet.Length)]);
+            }
+            _input = sb.ToString();
         }
 
         string Test(IMatcher matcher)
-        {
-            matcher.MatchChallenge(_bad);
-            return matcher.MatchChallenge(_good);
-        }
+            => matcher.MatchChallenge(_input);
 
+#if NEVER
         [Benchmark]
         public string Substring() => Test(_substringMatcher);
 
@@ -290,6 +303,7 @@ namespace MatchChallenge
 
         [Benchmark]
         public string KmpArrayPool() => Test(_kmpArrayPoolMatcher);
+#endif
 
         [Benchmark]
         public string KmpStackAlloc() => Test(_kmpStackAllocMatcher);
