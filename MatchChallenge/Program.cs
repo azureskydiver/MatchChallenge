@@ -268,7 +268,6 @@ namespace MatchChallenge
         string Test(IMatcher matcher)
             => matcher.MatchChallenge(_input);
 
-#if NEVER
         [Benchmark]
         public string Substring() => Test(_substringMatcher);
 
@@ -301,7 +300,6 @@ namespace MatchChallenge
 
         [Benchmark]
         public string KmpArrayPool() => Test(_kmpArrayPoolMatcher);
-#endif
 
         [Benchmark]
         public string KmpStackAlloc() => Test(_kmpStackAllocMatcher);
