@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Buffers;
 
 namespace MatchChallenge
 {
@@ -135,53 +136,7 @@ namespace MatchChallenge
         }
     }
 
-    public class KmpMatcher : IMatcher
-    {
-        public string MatchChallenge(string input)
-        {
-            if (string.IsNullOrEmpty(input))
-                return "-1";
-
-            var lps = ComputeLpsArray(input);
-            int suffixLength = lps[input.Length - 1];
-            if (suffixLength == 0)
-                return "-1";
-
-            int partLength = input.Length - suffixLength;
-            if (input.Length % partLength != 0)
-                return "-1";
-
-            if (partLength % 2 == 0)
-                partLength = input.Length / 2;
-            return input.Substring(0, partLength);
-        }
-
-        int[] ComputeLpsArray(ReadOnlySpan<char> input)
-        {
-            var lps = new int[input.Length];
-            int len = 0;
-            int i = 1;
-
-            while (i < input.Length)
-            {
-                if (input[i] == input[len])
-                {
-                    lps[i++] = ++len;
-                }
-                else
-                {
-                    if (len != 0)
-                        len = lps[len - 1];
-                    else
-                        lps[i++] = 0;
-                }
-            }
-
-            return lps;
-        }
-    }
-
-    public class KmpStackAllocMatcher : IMatcher
+    public abstract class KmpMatcher : IMatcher
     {
         public string MatchChallenge(string input)
         {
@@ -201,12 +156,14 @@ namespace MatchChallenge
             return input.Substring(0, partLength);
         }
 
-        int ComputeSuffixLength(ReadOnlySpan<char> input)
+        protected abstract int ComputeSuffixLength(ReadOnlySpan<char> input);
+
+        protected int ComputeSuffixLength(ReadOnlySpan<char> input, Span<int> lps)
         {
-            Span<int> lps = stackalloc int[input.Length];
             int len = 0;
             int i = 1;
 
+            lps[0] = 0;
             while (i < input.Length)
             {
                 if (input[i] == input[len])
@@ -221,8 +178,36 @@ namespace MatchChallenge
                         lps[i++] = 0;
                 }
             }
-
             return lps[input.Length - 1];
+        }
+    }
+
+    public class KmpHeapMatcher : KmpMatcher
+    {
+        protected override int ComputeSuffixLength(ReadOnlySpan<char> input)
+        {
+            var lps = new int[input.Length];
+            return ComputeSuffixLength(input, lps);
+        }
+    }
+
+    public class KmpArrayPoolMatcher : KmpMatcher
+    {
+        protected override int ComputeSuffixLength(ReadOnlySpan<char> input)
+        {
+            var lps = ArrayPool<int>.Shared.Rent(input.Length);
+            var suffixLength = ComputeSuffixLength(input, lps);
+            ArrayPool<int>.Shared.Return(lps);
+            return suffixLength;
+        }
+    }
+
+    public class KmpStackAllocMatcher : KmpMatcher
+    {
+        protected override int ComputeSuffixLength(ReadOnlySpan<char> input)
+        {
+            Span<int> lps = stackalloc int[input.Length];
+            return ComputeSuffixLength(input, lps);
         }
     }
 
@@ -244,7 +229,8 @@ namespace MatchChallenge
         IMatcher _pureRegexMatcher = new PureRegexMatcher();
         IMatcher _offsetMatcher = new OffsetMatcher();
         IMatcher _moduloMatcher = new ModuloMatcher();
-        IMatcher _kmpMatcher = new KmpMatcher();
+        IMatcher _kmpHeapMatcher = new KmpHeapMatcher();
+        IMatcher _kmpArrayPoolMatcher = new KmpArrayPoolMatcher();
         IMatcher _kmpStackAllocMatcher = new KmpStackAllocMatcher();
 
         public MatcherBenchmarks()
@@ -300,7 +286,10 @@ namespace MatchChallenge
         public string Modulo() => Test(_moduloMatcher);
 
         [Benchmark]
-        public string Kmp() => Test(_kmpMatcher);
+        public string KmpHeap() => Test(_kmpHeapMatcher);
+
+        [Benchmark]
+        public string KmpArrayPool() => Test(_kmpArrayPoolMatcher);
 
         [Benchmark]
         public string KmpStackAlloc() => Test(_kmpStackAllocMatcher);
