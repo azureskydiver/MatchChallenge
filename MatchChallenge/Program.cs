@@ -246,8 +246,6 @@ namespace MatchChallenge
         {
             var sb = new StringBuilder();
 
-            Console.WriteLine($"{GoodInput}, {BaseSize}, {Repetition}");
-
             if (GoodInput)
             {
                 for (int i = 0; i < BaseSize; i++)
