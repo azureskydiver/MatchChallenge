@@ -212,7 +212,8 @@ namespace MatchChallenge
     }
 
     [MemoryDiagnoser, RankColumn, ShortRunJob]
-    [AnyCategoriesFilter("A", "E"), AllCategoriesFilter("1")]
+    [AnyCategoriesFilter("A", "E")]
+    [AllCategoriesFilter("1")]
     public class MatcherBenchmarks
     {
         public enum InType
@@ -259,7 +260,7 @@ namespace MatchChallenge
                 sb.Append(alphabet[_rnd.Next(alphabet.Length)]);
             var value = sb.ToString();
 
-            if (InputType == InType.Mixed || InputType==InType.Good)
+            if (InputType == InType.Mixed || InputType == InType.Good)
             {
                 sb.Clear();
                 for (int i = 0; i < Repetition; i++)
@@ -333,8 +334,15 @@ namespace MatchChallenge
     {
         public static void Main()
         {
+#if DEBUG
+            //var args = new string[] { "--list", "Flat" };
+            //var args = new string[] { "-f", "*KmpStackAlloc" };
+            var args = new string[] { "-f", "*MatcherBenchmarks*" };
+            BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, new BenchmarkDotNet.Configs.DebugInProcessConfig());
+#else
             BenchmarkRunner.Run<MatcherBenchmarks>();
-            // Console.WriteLine(new MatcherBenchmarks().KmpMatcher());            
+            //Console.WriteLine(new MatcherBenchmarks().KmpStackAlloc());
+#endif
         }
     }
 }
