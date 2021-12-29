@@ -33,6 +33,12 @@ namespace MatchChallenge
             return "-1";
         }
 
+        protected virtual bool PreCheck(in PartData data)
+        {
+            var span = data.Input.AsSpan();
+            return span[0] == span[data.PartLength];
+        }
+
         protected abstract bool AllPartsEqual(in PartData data);
 
         protected record PartData(string Input, int PartLength, int PartCount)
@@ -52,13 +58,13 @@ namespace MatchChallenge
                     return false;
             }
             return true;
-        }
+        }        
     }
 
     public class SpanSliceMatcher : PartsMatcher
     {
         protected override bool AllPartsEqual(in PartData data)
-        {
+        {            
             for (int i = 1; i < data.PartCount; i++)
             {
                 if (!data.Input.AsSpan().Slice(i * data.PartLength, data.PartLength).SequenceEqual(data.Part.AsSpan()))
@@ -71,29 +77,25 @@ namespace MatchChallenge
     public class SplitMatcher : PartsMatcher
     {
         protected override bool AllPartsEqual(in PartData data)
-            => data.Input.Split(new string[] { data.Part }, StringSplitOptions.RemoveEmptyEntries).Length == 0;
+            => PreCheck(data) && data.Input.Split(new string[] { data.Part }, StringSplitOptions.RemoveEmptyEntries).Length == 0;
     }
 
     public class ReplaceMatcher : PartsMatcher
     {
         protected override bool AllPartsEqual(in PartData data)
-            => data.Input.Replace(data.Part, "").Length == 0;
+            => PreCheck(data) && data.Input.Replace(data.Part, "").Length == 0;
     }
 
     public class RegexMatcher : PartsMatcher
     {
         protected override bool AllPartsEqual(in PartData data)
-        {
-            return Regex.IsMatch(data.Input, $"({data.Part}){{{data.PartCount}}}");
-        }
+            => Regex.IsMatch(data.Input, $"({data.Part}){{{data.PartCount}}}");
     }
 
     public class LinqMatcher : PartsMatcher
     {
         protected override bool AllPartsEqual(in PartData data)
-        {
-            return string.Concat(Enumerable.Repeat(data.Part, data.PartCount)) == data.Input;
-        }
+            => string.Concat(Enumerable.Repeat(data.Part, data.PartCount)) == data.Input;
     }
 
     public class PureRegexMatcher : IMatcher
@@ -102,7 +104,7 @@ namespace MatchChallenge
         // also matching end $ is much slower
 
         public string MatchChallenge(string input)
-        {
+        {        
             var m = _regex.Match(input);
             if (m.Success && m.Length == input.Length)
                 return m.Groups[1].Value;
@@ -212,8 +214,8 @@ namespace MatchChallenge
     }
 
     [MemoryDiagnoser, RankColumn, ShortRunJob]
-    [AnyCategoriesFilter("A", "E")]
-    [AllCategoriesFilter("1")]
+    //[AnyCategoriesFilter("A", "B", "E")]
+    //[AllCategoriesFilter("1")]
     public class MatcherBenchmarks
     {
         public enum InType
@@ -242,8 +244,8 @@ namespace MatchChallenge
         IMatcher _kmpArrayPoolMatcher = new KmpArrayPoolMatcher();
         IMatcher _kmpStackAllocMatcher = new KmpStackAllocMatcher();
 
-        //[Params(InType.Mixed)]
-        [ParamsAllValues] 
+        [Params(InType.Mixed)]
+        //[ParamsAllValues]
         public InType InputType;
 
         [Params(257)]
@@ -336,7 +338,7 @@ namespace MatchChallenge
         {
 #if DEBUG
             //var args = new string[] { "--list", "Flat" };
-            //var args = new string[] { "-f", "*KmpStackAlloc" };
+            //var args = new string[] { "-f", "*KmpStackAlloc" }; //must match filtered benchmarks
             var args = new string[] { "-f", "*MatcherBenchmarks*" };
             BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, new BenchmarkDotNet.Configs.DebugInProcessConfig());
 #else
