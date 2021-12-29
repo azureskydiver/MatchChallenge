@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Buffers;
+using BenchmarkDotNet.Configs;
 
 namespace MatchChallenge
 {
@@ -158,7 +159,13 @@ namespace MatchChallenge
             return input.Substring(0, partLength);
         }
 
-        protected abstract int ComputeSuffixLength(ReadOnlySpan<char> input);
+        protected virtual int ComputeSuffixLength(ReadOnlySpan<char> input)
+        {
+            var lps = ArrayPool<int>.Shared.Rent(input.Length);
+            var suffixLength = ComputeSuffixLength(input, lps);
+            ArrayPool<int>.Shared.Return(lps);
+            return suffixLength;
+        }
 
         protected int ComputeSuffixLength(ReadOnlySpan<char> input, Span<int> lps)
         {
@@ -195,19 +202,27 @@ namespace MatchChallenge
 
     public class KmpArrayPoolMatcher : KmpMatcher
     {
-        protected override int ComputeSuffixLength(ReadOnlySpan<char> input)
-        {
-            var lps = ArrayPool<int>.Shared.Rent(input.Length);
-            var suffixLength = ComputeSuffixLength(input, lps);
-            ArrayPool<int>.Shared.Return(lps);
-            return suffixLength;
-        }
     }
 
     public class KmpStackAllocMatcher : KmpMatcher
     {
+        const int DefaultStackLengthMax = 128 * 1024;  // 128KB
+
+        public int StackLengthMax { get;  init; }
+
+        public KmpStackAllocMatcher(int stackLengthMax = DefaultStackLengthMax)
+        {
+            if (stackLengthMax <= 0)
+                throw new ArgumentOutOfRangeException(nameof(stackLengthMax), "Length must be greater than zero.");
+            StackLengthMax = stackLengthMax;
+        }
+
         protected override int ComputeSuffixLength(ReadOnlySpan<char> input)
         {
+            int byteLength = input.Length * sizeof(int);
+            if (byteLength > StackLengthMax)
+                return base.ComputeSuffixLength(input);
+
             Span<int> lps = stackalloc int[input.Length];
             return ComputeSuffixLength(input, lps);
         }
@@ -334,17 +349,20 @@ namespace MatchChallenge
 
     public class Program
     {
-        public static void Main()
+        public static void Main(string [] args)
         {
+            if (args?.Length == 0)
+            {
+                //args = new string[] { "--list", "Flat" };
+                //args = new string[] { "-f", "*KmpStackAlloc" }; //must match filtered benchmarks
+                args = new string[] { "-f", "*MatcherBenchmarks*" };
+            }
 #if DEBUG
-            //var args = new string[] { "--list", "Flat" };
-            //var args = new string[] { "-f", "*KmpStackAlloc" }; //must match filtered benchmarks
-            var args = new string[] { "-f", "*MatcherBenchmarks*" };
-            BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, new BenchmarkDotNet.Configs.DebugInProcessConfig());
+            var config = new DebugInProcessConfig();
 #else
-            BenchmarkRunner.Run<MatcherBenchmarks>();
-            //Console.WriteLine(new MatcherBenchmarks().KmpStackAlloc());
+            var config = DefaultConfig.Instance;
 #endif
+            BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
         }
     }
 }
