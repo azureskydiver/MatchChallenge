@@ -8,7 +8,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Buffers;
-using System.Diagnostics;
 using BenchmarkDotNet.Configs;
 
 namespace MatchChallenge
@@ -222,10 +221,7 @@ namespace MatchChallenge
         {
             int byteLength = input.Length * sizeof(int);
             if (byteLength > StackLengthMax)
-            {
-                Trace.TraceWarning($"{nameof(input)} is too long. {byteLength} bytes exceeds {StackLengthMax} limit. Falling back to array pool.");
                 return base.ComputeSuffixLength(input);
-            }
 
             Span<int> lps = stackalloc int[input.Length];
             return ComputeSuffixLength(input, lps);
@@ -355,7 +351,6 @@ namespace MatchChallenge
     {
         public static void Main(string [] args)
         {
-            Trace.Listeners.Add(new ConsoleTraceListener());
             if (args?.Length == 0)
             {
                 //args = new string[] { "--list", "Flat" };
