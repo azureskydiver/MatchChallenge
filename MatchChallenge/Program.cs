@@ -14,6 +14,7 @@ namespace MatchChallenge
 {
     public interface IMatcher
     {
+        const string NoMatch = "";
         string MatchChallenge(string input);
     }
 
@@ -31,7 +32,7 @@ namespace MatchChallenge
                         return data.Part;
                 }
             }
-            return "-1";
+            return IMatcher.NoMatch;
         }
 
         protected virtual bool PreCheck(in PartData data)
@@ -59,13 +60,13 @@ namespace MatchChallenge
                     return false;
             }
             return true;
-        }        
+        }
     }
 
     public class SpanSliceMatcher : PartsMatcher
     {
         protected override bool AllPartsEqual(in PartData data)
-        {            
+        {
             for (int i = 1; i < data.PartCount; i++)
             {
                 if (!data.Input.AsSpan().Slice(i * data.PartLength, data.PartLength).SequenceEqual(data.Part.AsSpan()))
@@ -90,7 +91,7 @@ namespace MatchChallenge
     public class RegexMatcher : PartsMatcher
     {
         protected override bool AllPartsEqual(in PartData data)
-            => Regex.IsMatch(data.Input, $"({data.Part}){{{data.PartCount}}}");
+            => Regex.IsMatch(data.Input, $"({Regex.Escape(data.Part)}){{{data.PartCount}}}");
     }
 
     public class LinqMatcher : PartsMatcher
@@ -105,11 +106,11 @@ namespace MatchChallenge
         // also matching end $ is much slower
 
         public string MatchChallenge(string input)
-        {        
+        {
             var m = _regex.Match(input);
             if (m.Success && m.Length == input.Length)
                 return m.Groups[1].Value;
-            return "-1";
+            return IMatcher.NoMatch;
         }
     }
 
@@ -144,15 +145,15 @@ namespace MatchChallenge
         public string MatchChallenge(string input)
         {
             if (string.IsNullOrEmpty(input))
-                return "-1";
+                return IMatcher.NoMatch;
 
             int suffixLength = ComputeSuffixLength(input);
             if (suffixLength == 0)
-                return "-1";
+                return IMatcher.NoMatch;
 
             int partLength = input.Length - suffixLength;
             if (input.Length % partLength != 0)
-                return "-1";
+                return IMatcher.NoMatch;
 
             if (partLength % 2 == 0)
                 partLength = input.Length / 2;
@@ -208,7 +209,7 @@ namespace MatchChallenge
     {
         const int DefaultStackLengthMax = 128 * 1024;  // 128KB
 
-        public int StackLengthMax { get;  init; }
+        public int StackLengthMax { get; init; }
 
         public KmpStackAllocMatcher(int stackLengthMax = DefaultStackLengthMax)
         {
@@ -292,7 +293,7 @@ namespace MatchChallenge
                 for (int i = 0; i < BaseSize * Repetition; i++)
                     sb.Append(alphabet[_rnd.Next(alphabet.Length)]);
                 _bad = sb.ToString();
-            }                
+            }
         }
 
         string Test(IMatcher matcher)
@@ -349,7 +350,7 @@ namespace MatchChallenge
 
     public class Program
     {
-        public static void Main(string [] args)
+        public static void Main(string[] args)
         {
             if (args?.Length == 0)
             {
